@@ -1,5 +1,5 @@
 import React from "react";
-
+//Footer
 function Footer() {
   return (
     <footer className="py-12 bg-white">
