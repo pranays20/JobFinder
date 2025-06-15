@@ -51,6 +51,10 @@ export const createJob = asyncHandler(async (req, res) => {
       return res.status(400).json({ message: "Skills are required" });
     }
 
+    /*  if (!skills) {
+      return res.status(400).json({ message: "Skills are required" });
+    }*/
+
     const job = new Job({
       title,
       description,
