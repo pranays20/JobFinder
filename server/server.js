@@ -12,6 +12,9 @@ dotenv.config();
 
 const app = express();
 
+// 👇 Detect environment
+const isProduction = process.env.NODE_ENV === "production";
+
 const config = {
   authRequired: false,
   auth0Logout: true,
@@ -25,12 +28,11 @@ const config = {
     logout: "/logout",
     login: "/login",
   },
-
   session: {
     absoluteDuration: 30 * 24 * 60 * 60 * 1000, // 30 days
     cookie: {
-      domain: "jobfindr-q1cl.onrender.com",
-      secure: true,
+      domain: isProduction ? "jobfindr-q1cl.onrender.com" : undefined,
+      secure: isProduction, // ✅ Secure only in production
       sameSite: "None",
     },
   },
@@ -50,6 +52,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
+// 👇 Apply auth middleware
 app.use(auth(config));
 
 // function to check if user exists in the db
@@ -58,7 +61,6 @@ const enusureUserInDB = asyncHandler(async (user) => {
     const existingUser = await User.findOne({ auth0Id: user.sub });
 
     if (!existingUser) {
-      // create a new user document
       const newUser = new User({
         auth0Id: user.sub,
         email: user.email,
@@ -68,7 +70,6 @@ const enusureUserInDB = asyncHandler(async (user) => {
       });
 
       await newUser.save();
-
       console.log("User added to db", user);
     } else {
       console.log("User already exists in db", existingUser);
@@ -80,10 +81,7 @@ const enusureUserInDB = asyncHandler(async (user) => {
 
 app.get("/", async (req, res) => {
   if (req.oidc.isAuthenticated()) {
-    // check if Auth0 user exists in the db
     await enusureUserInDB(req.oidc.user);
-
-    // redirect to the frontend
     return res.redirect(process.env.CLIENT_URL);
   } else {
     return res.send("Logged out");
@@ -94,7 +92,6 @@ app.get("/", async (req, res) => {
 const routeFiles = fs.readdirSync("./routes");
 
 routeFiles.forEach((file) => {
-  // import dynamic routes
   import(`./routes/${file}`)
     .then((route) => {
       app.use("/api/v1/", route.default);
@@ -107,7 +104,6 @@ routeFiles.forEach((file) => {
 const server = async () => {
   try {
     await connect();
-
     app.listen(process.env.PORT, () => {
       console.log(`Server is running on port ${process.env.PORT}`);
     });
@@ -116,5 +112,6 @@ const server = async () => {
     process.exit(1);
   }
 };
+
 
 server();
